@@ -24,7 +24,7 @@ select = [
     "UP",  # pyupgrade
     "PL",  # Pylint
 ]
-ignore = ["E501"]
+ignore = ["E501", "B008", "PLR2004"]
 
 [tool.pytest.ini_options]
 addopts = "-v --cov=app --cov-report=term-missing"

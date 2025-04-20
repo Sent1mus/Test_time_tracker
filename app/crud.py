@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import date
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from . import models, schemas
 
 
@@ -42,13 +44,15 @@ def get_projects(db: Session, skip: int = 0, limit: int = 100) -> list[models.Pr
     return db.query(models.Project).offset(skip).limit(limit).all()
 
 
-def create_time_entry(db: Session, time_entry: schemas.TimeEntryCreate) -> models.TimeEntry:
+def create_time_entry(
+    db: Session, time_entry: schemas.TimeEntryCreate
+) -> models.TimeEntry:
     """Create a new time entry in the database."""
     db_time_entry = models.TimeEntry(
         user_id=time_entry.user_id,
         project_id=time_entry.project_id,
         date=time_entry.date,
-        hours=time_entry.hours
+        hours=time_entry.hours,
     )
     db.add(db_time_entry)
     db.commit()
@@ -57,31 +61,32 @@ def create_time_entry(db: Session, time_entry: schemas.TimeEntryCreate) -> model
 
 
 def get_time_entries(
-    db: Session, 
-    user_id: int, 
-    start_date: date, 
-    end_date: date
+    db: Session, user_id: int, start_date: date, end_date: date
 ) -> list[models.TimeEntry]:
     """Get time entries for a user within a date range."""
-    return db.query(models.TimeEntry).filter(
-        models.TimeEntry.user_id == user_id,
-        models.TimeEntry.date >= start_date,
-        models.TimeEntry.date < end_date
-    ).all()
+    return (
+        db.query(models.TimeEntry)
+        .filter(
+            models.TimeEntry.user_id == user_id,
+            models.TimeEntry.date >= start_date,
+            models.TimeEntry.date < end_date,
+        )
+        .all()
+    )
 
 
 def get_report(
-    db: Session, 
-    project_id: int, 
-    start_date: date, 
-    end_date: date
+    db: Session, project_id: int, start_date: date, end_date: date
 ) -> list[tuple[int, float]]:
     """Get a report of hours worked by users on a project within a date range."""
-    return db.query(
-        models.User.id,
-        func.sum(models.TimeEntry.hours).label("hours")
-    ).join(models.TimeEntry).filter(
-        models.TimeEntry.project_id == project_id,
-        models.TimeEntry.date >= start_date,
-        models.TimeEntry.date < end_date
-    ).group_by(models.User.id).all()
+    return (
+        db.query(models.User.id, func.sum(models.TimeEntry.hours).label("hours"))
+        .join(models.TimeEntry)
+        .filter(
+            models.TimeEntry.project_id == project_id,
+            models.TimeEntry.date >= start_date,
+            models.TimeEntry.date < end_date,
+        )
+        .group_by(models.User.id)
+        .all()
+    )

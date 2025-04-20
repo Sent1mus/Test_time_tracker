@@ -7,16 +7,11 @@ DATABASE_URL = "sqlite:///./test.db"
 
 # Create database engine
 engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False}  # SQLite-specific parameter
+    DATABASE_URL, connect_args={"check_same_thread": False}  # SQLite-specific parameter
 )
 
 # Session factory for database sessions
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for SQLAlchemy models
 Base = declarative_base()
