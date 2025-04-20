@@ -1,0 +1,665 @@
+# ==== W:\Study\Code\Python_projects\time_tracker\.dockerignore ====
+.git
+.idea
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+.env
+test.db
+.pytest_cache
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pre-commit-config.yaml ====
+repos:
+  - repo: https://github.com/psf/black
+    rev: stable
+    hooks:
+      - id: black
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.0.272
+    hooks:
+      - id: ruff
+
+# ==== W:\Study\Code\Python_projects\time_tracker\code.txt ====
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\docker-compose.yml ====
+version: '3.8'
+
+services:
+  app:
+    build: .
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  tests:
+    build: .
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+    environment:
+      - PYTHONPATH=/app
+    command: pytest tests/ -v
+    depends_on:
+      - app
+
+# ==== W:\Study\Code\Python_projects\time_tracker\Dockerfile ====
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Установка зависимостей и just
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Копируем зависимости отдельно для кэширования
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем код (исключая ненужные файлы через .dockerignore)
+COPY . .
+
+# Для корректного импорта модулей
+ENV PYTHONPATH="${PYTHONPATH}:/app"
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ==== W:\Study\Code\Python_projects\time_tracker\getcode.py ====
+import os
+
+# Папка источника (SOURCE)
+SOURCE = "W:\\Study\\Code\\Python_projects\\time_tracker"
+
+# Список исключений (например, папки и файлы, которые не нужно обрабатывать)
+exclude_list = [
+    ".idea",  # Имя папки, которую нужно исключить
+    ".gitignore",
+    "__pycache__"# Имя файла, который нужно исключить
+]
+
+def extract_code_from_file(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()
+
+def should_exclude(path):
+    return any(exclude in path for exclude in exclude_list)
+
+def process_directory(source_path, output_file):
+    with open(output_file, 'w', encoding='utf-8') as out_file:
+        for root, dirs, files in os.walk(source_path):
+            print(f"Обрабатывается папка: {root}")
+            dirs[:] = [d for d in dirs if not should_exclude(os.path.join(root, d))]
+            for file in files:
+                file_path = os.path.join(root, file)
+                if should_exclude(file_path):
+                    print(f"Пропущено (исключение): {file_path}")
+                    continue
+                try:
+                    code = extract_code_from_file(file_path)
+                    print(f"Чтение файла: {file_path}")
+                    out_file.write(f"# ==== {file_path} ====\n")
+                    out_file.write(code + "\n\n")
+                except Exception as e:
+                    print(f"Ошибка при чтении файла {file_path}: {e}")
+                    out_file.write(f"# Ошибка при чтении файла {file_path}: {e}\n\n")
+
+# Запуск
+process_directory(SOURCE, "code.txt")
+
+# ==== W:\Study\Code\Python_projects\time_tracker\justfile ====
+# Указываем shell для Windows
+set shell := ["powershell", "-NoProfile", "-Command"]
+
+default:
+    just up
+
+up:
+    docker-compose up --build
+
+test:
+    docker-compose run tests
+
+lint:
+    docker-compose exec app ruff check .
+    docker-compose exec app black --check .
+
+format:
+    docker-compose exec app black .
+
+install:
+    pip install -r requirements.txt
+
+# ==== W:\Study\Code\Python_projects\time_tracker\requirements.txt ====
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pytest
+httpx
+black
+ruff
+python-dotenv
+
+# Ошибка при чтении файла W:\Study\Code\Python_projects\time_tracker\test.db: 'utf-8' codec can't decode byte 0x82 in position 109: invalid start byte
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.github\workflows\ci.yml ====
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run linting
+        run: just lint
+
+      - name: Run tests
+        run: just test
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pytest_cache\CACHEDIR.TAG ====
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by pytest.
+# For information about cache directory tags, see:
+#	https://bford.info/cachedir/spec.html
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pytest_cache\README.md ====
+# pytest cache directory #
+
+This directory contains data from the pytest's cache plugin,
+which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
+
+**Do not** commit this to version control.
+
+See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pytest_cache\v\cache\lastfailed ====
+{
+  "tests/test_projects.py": true,
+  "tests/test_time_entries.py": true,
+  "tests/test_users.py": true
+}
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pytest_cache\v\cache\nodeids ====
+[]
+
+# ==== W:\Study\Code\Python_projects\time_tracker\.pytest_cache\v\cache\stepwise ====
+[]
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\crud.py ====
+from sqlalchemy.orm import Session
+from . import models, schemas
+from datetime import date
+from sqlalchemy import func
+
+# Пользователь
+def create_user(db: Session, user: schemas.UserCreate):
+    db_user = models.User(name=user.name, is_manager=user.is_manager)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def get_user(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+# Проект
+def create_project(db: Session, project: schemas.ProjectCreate):
+    db_project = models.Project(name=project.name)
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+def get_project(db: Session, project_id: int):
+    return db.query(models.Project).filter(models.Project.id == project_id).first()
+
+def get_projects(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Project).offset(skip).limit(limit).all()
+
+# Время
+def create_time_entry(db: Session, time_entry: schemas.TimeEntryCreate):
+    db_time_entry = models.TimeEntry(
+        user_id=time_entry.user_id,
+        project_id=time_entry.project_id,
+        date=time_entry.date,
+        hours=time_entry.hours
+    )
+    db.add(db_time_entry)
+    db.commit()
+    db.refresh(db_time_entry)
+    return db_time_entry
+
+def get_time_entries(db: Session, user_id: int, start_date: date, end_date: date):
+    return db.query(models.TimeEntry).filter(
+        models.TimeEntry.user_id == user_id,
+        models.TimeEntry.date >= start_date,
+        models.TimeEntry.date < end_date
+    ).all()
+
+def get_report(db: Session, project_id: int, start_date: date, end_date: date):
+    return db.query(
+        models.User.id,
+        func.sum(models.TimeEntry.hours).label("hours")
+    ).join(models.TimeEntry).filter(
+        models.TimeEntry.project_id == project_id,
+        models.TimeEntry.date >= start_date,
+        models.TimeEntry.date < end_date
+    ).group_by(models.User.id).all()
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\database.py ====
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "sqlite:///./test.db"  # можно заменить на PostgreSQL
+
+engine = create_engine(
+    DATABASE_URL, connect_args={"check_same_thread": False}  # только для SQLite
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\main.py ====
+from fastapi import FastAPI
+from .routers import users, projects, time_entries
+from .database import engine
+from . import models
+
+# Создание всех таблиц в базе данных
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+# Подключаем маршруты
+app.include_router(users.router, prefix="/users", tags=["users"])
+app.include_router(projects.router, prefix="/projects", tags=["projects"])
+app.include_router(time_entries.router, prefix="/time-entries", tags=["time_entries"])
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\models.py ====
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, Float
+from sqlalchemy.orm import relationship
+from .database import Base
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    is_manager = Column(Boolean, default=False)
+
+    time_entries = relationship("TimeEntry", back_populates="user")
+
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+
+    time_entries = relationship("TimeEntry", back_populates="project")
+
+
+class TimeEntry(Base):
+    __tablename__ = "time_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    date = Column(Date)
+    hours = Column(Float)
+
+    user = relationship("User", back_populates="time_entries")
+    project = relationship("Project", back_populates="time_entries")
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\schemas.py ====
+from pydantic import BaseModel
+from typing import Optional
+from datetime import date
+
+class UserBase(BaseModel):
+    name: str
+    is_manager: Optional[bool] = False
+
+class UserCreate(UserBase):
+    pass
+
+class User(UserBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+class ProjectBase(BaseModel):
+    name: str
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class Project(ProjectBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+class TimeEntryBase(BaseModel):
+    user_id: int
+    project_id: int
+    date: date
+    hours: float
+
+class TimeEntryCreate(TimeEntryBase):
+    pass
+
+class TimeEntry(TimeEntryBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\routers\projects.py ====
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from .. import crud, schemas, models
+from ..database import SessionLocal
+
+router = APIRouter()
+
+# Зависимость для получения сессии базы данных
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# CRUD операции для проектов
+@router.post("/", response_model=schemas.Project)
+def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
+    return crud.create_project(db=db, project=project)
+
+@router.get("/{project_id}", response_model=schemas.Project)
+def read_project(project_id: int, db: Session = Depends(get_db)):
+    return crud.get_project(db=db, project_id=project_id)
+
+@router.get("/", response_model=list[schemas.Project])
+def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_projects(db=db, skip=skip, limit=limit)
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\routers\time_entries.py ====
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from .. import crud, schemas, models
+from ..database import SessionLocal
+from datetime import date
+
+router = APIRouter()
+
+# Зависимость для получения сессии базы данных
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# CRUD операции для времени
+@router.post("/", response_model=schemas.TimeEntry)
+def create_time_entry(time_entry: schemas.TimeEntryCreate, db: Session = Depends(get_db)):
+    return crud.create_time_entry(db=db, time_entry=time_entry)
+
+@router.get("/", response_model=list[schemas.TimeEntry])
+def read_time_entries(user_id: int, start_date: date, end_date: date, db: Session = Depends(get_db)):
+    return crud.get_time_entries(db=db, user_id=user_id, start_date=start_date, end_date=end_date)
+
+@router.get("/report", response_model=list[dict])
+def get_report(project_id: int, start_date: date, end_date: date, db: Session = Depends(get_db)):
+    report = crud.get_report(db=db, project_id=project_id, start_date=start_date, end_date=end_date)
+    return [{"id": user_id, "hours": hours} for user_id, hours in report]
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\app\routers\users.py ====
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from .. import crud, schemas, models
+from ..database import SessionLocal
+
+router = APIRouter()
+
+# Зависимость для получения сессии базы данных
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# CRUD операции для пользователей
+@router.post("/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    return crud.create_user(db=db, user=user)
+
+@router.get("/{user_id}", response_model=schemas.User)
+def read_user(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_user(db=db, user_id=user_id)
+
+@router.get("/", response_model=list[schemas.User])
+def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_users(db=db, skip=skip, limit=limit)
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\tests\test_projects.py ====
+from fastapi.testclient import TestClient
+from app.main import app
+from app import models, crud
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import Base, SessionLocal
+
+# Создание тестовой базы данных
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionTestLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Настройка клиента
+client = TestClient(app)
+
+# Создание базы данных
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+# Удаление базы данных
+def drop_db():
+    Base.metadata.drop_all(bind=engine)
+
+# Тесты
+def test_create_project():
+    init_db()
+
+    # Создаем проект
+    response = client.post("/projects/", json={"name": "Project A"})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Project A"
+
+    drop_db()
+
+def test_get_projects():
+    init_db()
+
+    # Создаем проекты
+    client.post("/projects/", json={"name": "Project A"})
+    client.post("/projects/", json={"name": "Project B"})
+
+    # Проверяем список проектов
+    response = client.get("/projects/")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    drop_db()
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\tests\test_time_entries.py ====
+from fastapi.testclient import TestClient
+from app.main import app
+from app import models, crud
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import Base, SessionLocal
+from datetime import date
+
+# Создание тестовой базы данных
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionTestLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Настройка клиента
+client = TestClient(app)
+
+# Создание базы данных
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+# Удаление базы данных
+def drop_db():
+    Base.metadata.drop_all(bind=engine)
+
+# Тесты
+def test_create_time_entry():
+    init_db()
+
+    # Создаем пользователей и проект
+    user_response = client.post("/users/", json={"name": "Alice", "is_manager": True})
+    project_response = client.post("/projects/", json={"name": "Project A"})
+    user_id = user_response.json()["id"]
+    project_id = project_response.json()["id"]
+
+    # Создаем запись времени
+    time_entry_data = {"user_id": user_id, "project_id": project_id, "date": "2025-04-19", "hours": 8}
+    response = client.post("/time-entries/", json=time_entry_data)
+    assert response.status_code == 200
+    assert response.json()["hours"] == 8
+
+    drop_db()
+
+def test_get_time_entries():
+    init_db()
+
+    # Создаем пользователей и проект
+    user_response = client.post("/users/", json={"name": "Alice", "is_manager": True})
+    project_response = client.post("/projects/", json={"name": "Project A"})
+    user_id = user_response.json()["id"]
+    project_id = project_response.json()["id"]
+
+    # Добавляем записи времени
+    time_entry_data_1 = {"user_id": user_id, "project_id": project_id, "date": "2025-04-19", "hours": 8}
+    time_entry_data_2 = {"user_id": user_id, "project_id": project_id, "date": "2025-04-20", "hours": 7}
+    client.post("/time-entries/", json=time_entry_data_1)
+    client.post("/time-entries/", json=time_entry_data_2)
+
+    # Проверяем записи времени
+    response = client.get(f"/time-entries/?user_id={user_id}&start_date=2025-04-19&end_date=2025-04-21")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    drop_db()
+
+
+# ==== W:\Study\Code\Python_projects\time_tracker\tests\test_users.py ====
+from fastapi.testclient import TestClient
+from app.main import app
+from app import models, crud
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import Base, SessionLocal
+
+# Создание тестовой базы данных
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionTestLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Настройка клиента
+client = TestClient(app)
+
+# Создание базы данных
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+# Удаление базы данных
+def drop_db():
+    Base.metadata.drop_all(bind=engine)
+
+# Тесты
+def test_create_user():
+    init_db()
+
+    # Создаем пользователя
+    response = client.post("/users/", json={"name": "Alice", "is_manager": True})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Alice"
+    assert response.json()["is_manager"] == True
+
+    drop_db()
+
+def test_get_users():
+    init_db()
+
+    # Создаем пользователей
+    client.post("/users/", json={"name": "Alice", "is_manager": True})
+    client.post("/users/", json={"name": "Bob", "is_manager": False})
+
+    # Проверяем список пользователей
+    response = client.get("/users/")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    drop_db()
+
+
