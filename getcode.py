@@ -5,9 +5,12 @@ SOURCE = "W:\\Study\\Code\\Python_projects\\time_tracker"
 
 # Список исключений (например, папки и файлы, которые не нужно обрабатывать)
 exclude_list = [
-    ".idea",  # Имя папки, которую нужно исключить
+    ".idea",
     ".gitignore",
-    "__pycache__"# Имя файла, который нужно исключить
+    "__pycache__",
+    "venv",
+    ".pytest_cache",
+    ".env"
 ]
 
 def extract_code_from_file(file_path):

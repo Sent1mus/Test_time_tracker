@@ -17,6 +17,6 @@ services:
       - ./tests:/app/tests
     environment:
       - PYTHONPATH=/app
-    command: pytest tests/ -v
+    command: bash -c "pip install pytest-cov && pytest tests/ -v"
     depends_on:
       - app
